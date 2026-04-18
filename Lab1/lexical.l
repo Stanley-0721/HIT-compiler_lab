@@ -2,15 +2,16 @@
 #include <stdio.h>    
 #include "syntax.tab.h"
 %}
+
 %option yylineno
+
 SPACE [ \r\t\n]+
 INT ([1-9][0-9]*|0)
 FLOAT [0-9]+\.[0-9]+
-ID [a-zA-Z_][a-zA-Z0-9_]*
 SEMI ;
 COMMA ,
 ASSIGNOP =
-RELOP >|<|>=|<=|==|!=
+RELOP >=|<=|==|!=|>|<
 PLUS \+
 MINUS \-
 STAR \*
@@ -31,6 +32,8 @@ RETURN return
 IF if
 ELSE else
 WHILE while
+ID [a-zA-Z_][a-zA-Z0-9_]*
+
 %%
 {SPACE} {}
 {INT}        { return INT; }
