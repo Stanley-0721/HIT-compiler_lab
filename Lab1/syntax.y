@@ -13,15 +13,15 @@ extern char *yytext;
 int yylex(void);
 // Bison 默认错误处理函数声明
 void yyerror(const char* msg);
-%}
 
+// 语法树
 typedef struct Node {
     char* name;        // 节点名
     int line;          // 行号
     int num;           // 子节点数量
     struct Node** child; // 子节点
 
-    // 关键：节点的值（整数/浮点数/标识符）
+    // 节点的值（整数/浮点数/标识符）
     union {
         char str[MAX_NAME];  // 存变量名
         int ival;            // 存整数
@@ -61,9 +61,10 @@ void freeTree(Node* root);
  */
 void printTree(Node* root, int depth);
 
+%}
 
 %union{
-struct Node* tree;
+    struct Node* tree;
 }
 
 %token <tree> INT FLOAT ID
@@ -86,7 +87,15 @@ struct Node* tree;
 
 %%
 
+/* 这里以后写你的语法规则 */
+
 %%
+
+// 错误处理函数
+void yyerror(const char* msg) {
+    fprintf(stderr, "Error: %s at line %d, text: %s\n", msg, yylineno, yytext);
+}
+
 
 Node* createTree(const char* name, int line) {
     Node* node = (Node*)malloc(sizeof(Node));
@@ -97,14 +106,12 @@ Node* createTree(const char* name, int line) {
     return node;
 }
 
-
 void addChild(Node* parent, Node* child) {
     if (!parent || !child) return;
 
     parent->child = (Node**)realloc(parent->child, (parent->num + 1) * sizeof(Node*));
     parent->child[parent->num++] = child;
 }
-
 
 void freeTree(Node* root) {
     if (!root) return;
