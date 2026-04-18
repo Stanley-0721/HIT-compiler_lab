@@ -87,7 +87,344 @@ void printTree(Node* root, int depth);
 
 %%
 
-/* 这里以后写你的语法规则 */
+/* 顶层定义 */
+Program : ExtDefList {
+    $$ = createTree("Program", yylineno);
+    if($1) addChild($$, $1);  // ✅ 安全
+};
+
+ExtDefList : ExtDef ExtDefList {
+    $$ = createTree("ExtDefList", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+}
+| /* empty */ {
+    $$ = NULL;
+};
+
+ExtDef : Specifier ExtDecList SEMI {
+    $$ = createTree("ExtDef", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Specifier SEMI {
+    $$ = createTree("ExtDef", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+}
+| Specifier FunDec CompSt {
+    $$ = createTree("ExtDef", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+};
+
+ExtDecList : VarDec {
+        $$ = createTree("ExtDecList", yylineno);
+        addChild($$, $1);
+    }
+    | VarDec COMMA ExtDecList {
+        $$ = createTree("ExtDecList", yylineno);
+        addChild($$, $1);
+        addChild($$, $2);
+        addChild($$, $3);
+    }
+;
+/* Specifiers */
+Specifier : TYPE {
+    $$ = createTree("Specifier", yylineno);
+    addChild($$, $1);
+}
+| StructSpecifier {
+    $$ = createTree("Specifier", yylineno);
+    addChild($$, $1);
+};
+
+StructSpecifier : STRUCT OptTag LC DefList RC {
+    $$ = createTree("StructSpecifier", yylineno);
+    addChild($$, $1);
+    if ($2) addChild($$, $2);
+    addChild($$, $3);
+    if ($4) addChild($$, $4);
+    addChild($$, $5);
+}
+| STRUCT Tag {
+    $$ = createTree("StructSpecifier", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+};
+
+OptTag : ID {
+    $$ = createTree("OptTag", yylineno);
+    addChild($$, $1);
+}
+| /* empty */ {
+    $$ = NULL;
+};
+
+Tag : ID {
+    $$ = createTree("Tag", yylineno);
+    addChild($$, $1);
+};
+
+VarDec : ID {
+    $$ = createTree("VarDec", yylineno);
+    addChild($$, $1);
+}
+| VarDec LB INT RB {
+    $$ = createTree("VarDec", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+};
+
+
+FunDec : ID LP VarList RP {
+    $$ = createTree("FunDec", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+}
+| ID LP RP {
+    $$ = createTree("FunDec", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+};
+
+VarList : ParamDec COMMA VarList {
+    $$ = createTree("VarList", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| ParamDec {
+    $$ = createTree("VarList", yylineno);
+    addChild($$, $1);
+};
+
+ParamDec : Specifier VarDec {
+    $$ = createTree("ParamDec", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+};
+
+
+CompSt : LC DefList StmtList RC {
+    $$ = createTree("CompSt", yylineno);
+    addChild($$, $1);
+    if ($2) addChild($$, $2);
+    if ($3) addChild($$, $3);
+    addChild($$, $4);
+};
+
+StmtList : Stmt StmtList {
+    $$ = createTree("StmtList", yylineno);
+    addChild($$, $1);
+    if ($2) addChild($$, $2);
+}
+| /* empty */ {
+    $$ = NULL;
+};
+
+
+Stmt : Exp SEMI {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+}
+| CompSt {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+}
+| RETURN Exp SEMI {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| IF LP Exp RP Stmt {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+    addChild($$, $5);
+}
+| IF LP Exp RP Stmt ELSE Stmt {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+    addChild($$, $5);
+    addChild($$, $6);
+    addChild($$, $7);
+}
+| WHILE LP Exp RP Stmt {
+    $$ = createTree("Stmt", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+    addChild($$, $5);
+};
+
+
+DefList : Def DefList {
+    $$ = createTree("DefList", yylineno);
+    addChild($$, $1);
+    if ($2) addChild($$, $2);
+}
+| /* empty */ {
+    $$ = NULL;
+};
+
+Def : Specifier DecList SEMI {
+    $$ = createTree("Def", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+};
+
+DecList : Dec {
+    $$ = createTree("DecList", yylineno);
+    addChild($$, $1);
+}
+| Dec COMMA DecList {
+    $$ = createTree("DecList", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+};
+
+Dec : VarDec {
+    $$ = createTree("Dec", yylineno);
+    addChild($$, $1);
+}
+| VarDec ASSIGNOP Exp {
+    $$ = createTree("Dec", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+};
+
+Exp : Exp ASSIGNOP Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp AND Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp OR Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp RELOP Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp PLUS Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp MINUS Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp STAR Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp DIV Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| LP Exp RP {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| MINUS Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+}
+| NOT Exp {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+}
+| ID LP Args RP {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+}
+| ID LP RP {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp LB Exp RB {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+    addChild($$, $4);
+}
+| Exp DOT ID {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| ID {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+}
+| INT {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+}
+| FLOAT {
+    $$ = createTree("Exp", yylineno);
+    addChild($$, $1);
+};
+
+Args : Exp COMMA Args {
+    $$ = createTree("Args", yylineno);
+    addChild($$, $1);
+    addChild($$, $2);
+    addChild($$, $3);
+}
+| Exp {
+    $$ = createTree("Args", yylineno);
+    addChild($$, $1);
+};
 
 %%
 
