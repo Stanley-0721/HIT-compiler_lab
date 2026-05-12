@@ -542,6 +542,19 @@ static void collectStructFields(Node* decList, Type* fieldType, Symbol* structSy
     char* fieldName = getBaseVarName(varDec);
     if (!fieldName) return;
 
+    // 检查字段是否重复定义
+    for (int i = 0; i < structSym->fieldCount; i++) {
+        if (strcmp(structSym->fields[i]->name, fieldName) == 0) {
+            printf("Error type 15 at Line %d: Redefined field \"%s\".\n",
+                   varDec->line, fieldName);
+            error_count++;
+            // 仍然递归处理后续字段
+            if (decList->num == 3)
+                collectStructFields(decList->child[2], fieldType, structSym);
+            return;
+        }
+    }
+
     Symbol* field = (Symbol*)malloc(sizeof(Symbol));
     strncpy(field->name, fieldName, MAX_NAME - 1);
     field->name[MAX_NAME - 1] = '\0';
