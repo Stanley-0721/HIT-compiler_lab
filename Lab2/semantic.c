@@ -94,6 +94,16 @@ static void traverse(Node* node) {
  *  表达式检查
  * ================================================================ */
 
+static const char* typeName(Type* t) {
+    if (!t) return "?";
+    switch (t->kind) {
+        case TYPE_INT:   return "int";
+        case TYPE_FLOAT: return "float";
+        case TYPE_STRUCT: return t->structName;
+        default: return "?";
+    }
+}
+
 static Type* checkExp(Node* exp) {
     if (!exp) return NULL;
 
@@ -130,8 +140,55 @@ static Type* checkExp(Node* exp) {
             error_count++;
             return createType(TYPE_INT);
         }
-        for (int i = 2; i < exp->num; i++)
-            traverse(exp->child[i]);
+
+        // 收集实参类型
+        int argCount = 0;
+        Type* argTypes[64];
+        if (exp->num == 4) {
+            Node* cur = exp->child[2]; // Args
+            while (cur && strcmp(cur->name, "Args") == 0) {
+                if (argCount < 64)
+                    argTypes[argCount++] = checkExp(cur->child[0]);
+                cur = (cur->num == 3) ? cur->child[2] : NULL;
+            }
+        }
+
+        // 检查参数数量
+        int match = (argCount == sym->paramCount);
+        if (match) {
+            for (int i = 0; i < argCount; i++) {
+                if (argTypes[i]->kind != sym->paramTypes[i]->kind)
+                    { match = 0; break; }
+            }
+        }
+
+        if (!match) {
+            // 构造函数签名 "func(int)"
+            char sig[512];
+            snprintf(sig, sizeof(sig), "%s(", name);
+            for (int i = 0; i < sym->paramCount; i++) {
+                if (i > 0) strncat(sig, ", ", sizeof(sig) - strlen(sig) - 1);
+                strncat(sig, typeName(sym->paramTypes[i]),
+                        sizeof(sig) - strlen(sig) - 1);
+            }
+            strncat(sig, ")", sizeof(sig) - strlen(sig) - 1);
+
+            // 构造实参类型 "(int, int)"
+            char argStr[512];
+            snprintf(argStr, sizeof(argStr), "(");
+            for (int i = 0; i < argCount; i++) {
+                if (i > 0) strncat(argStr, ", ", sizeof(argStr) - strlen(argStr) - 1);
+                strncat(argStr, typeName(argTypes[i]),
+                        sizeof(argStr) - strlen(argStr) - 1);
+            }
+            strncat(argStr, ")", sizeof(argStr) - strlen(argStr) - 1);
+
+            printf("Error type 9 at Line %d: Function \"%s\" is not applicable"
+                   " for arguments \"%s\".\n", exp->line, sig, argStr);
+            error_count++;
+        }
+
+        for (int i = 0; i < argCount; i++) freeType(argTypes[i]);
         return copyType(sym->returnType);
     }
 
@@ -173,6 +230,29 @@ static Type* checkExp(Node* exp) {
         }
         freeType(right);
         return left;
+    }
+
+    // Exp → Exp LB Exp RB  —— 数组下标
+    if (exp->num == 4 && strcmp(exp->child[1]->name, "LB") == 0) {
+        Type* arrType = checkExp(exp->child[0]);
+        if (arrType && !arrType->isArray) {
+            char* name = "?";
+            Node* lhs = exp->child[0];
+            if (lhs->num == 1 && strcmp(lhs->child[0]->name, "ID") == 0)
+                name = lhs->child[0]->val.str;
+            printf("Error type 10 at Line %d: \"%s\" is not an array.\n",
+                   exp->line, name);
+            error_count++;
+        }
+        Type* idxType = checkExp(exp->child[2]);
+        freeType(idxType);
+        if (arrType && arrType->isArray && arrType->elementType) {
+            Type* elem = copyType(arrType->elementType);
+            freeType(arrType);
+            return elem;
+        }
+        freeType(arrType);
+        return createType(TYPE_INT);
     }
 
     // Exp → LP Exp RP
