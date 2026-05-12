@@ -520,8 +520,12 @@ static void processStructDef(Node* structSpec) {
 
     char* name = structSpec->child[1]->child[0]->val.str;
     Symbol* structSym = insertSymbol(name, NULL, SYM_STRUCT, structSpec->line);
-    if (!structSym)
+    if (!structSym) {
+        printf("Error type 16 at Line %d: Duplicated name \"%s\".\n",
+               structSpec->line, name);
+        error_count++;
         return;
+    }
 
     // 遍历 DefList 收集字段
     Node* defList = structSpec->child[3];
