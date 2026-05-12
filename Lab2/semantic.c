@@ -116,9 +116,16 @@ static Type* checkExp(Node* exp) {
 
     // Exp → Exp ASSIGNOP Exp  —— 赋值
     if (exp->num == 3 && strcmp(exp->child[1]->name, "ASSIGNOP") == 0) {
-        Type* left  = checkExp(exp->child[0]);
+        Node* lhs = exp->child[0];
+        int isVar = (lhs->num == 1 && strcmp(lhs->child[0]->name, "ID") == 0);
+        if (!isVar) {
+            printf("Error type 6 at Line %d: The left-hand side of an assignment must be a variable.\n",
+                   exp->line);
+            error_count++;
+        }
+        Type* left  = checkExp(lhs);
         Type* right = checkExp(exp->child[2]);
-        if (left && right && left->kind != right->kind) {
+        if (isVar && left && right && left->kind != right->kind) {
             printf("Error type 5 at Line %d: Type mismatched for assignment.\n",
                    exp->line);
             error_count++;
