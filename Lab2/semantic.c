@@ -5,6 +5,7 @@
 #include "symbol_table.h"
 
 static int error_count = 0;
+static Symbol* currentFunc = NULL;
 
 /* ---- forward declarations ---- */
 static void traverse(Node* node);
@@ -61,6 +62,26 @@ static void traverse(Node* node) {
     if (strcmp(node->name, "Exp") == 0) {
         Type* t = checkExp(node);
         freeType(t);
+        return;
+    }
+
+    if (strcmp(node->name, "Stmt") == 0) {
+        // Stmt → RETURN Exp SEMI
+        if (node->num >= 2 && strcmp(node->child[0]->name, "RETURN") == 0) {
+            Type* retType = checkExp(node->child[1]);
+            if (currentFunc && currentFunc->returnType &&
+                retType && retType->kind != currentFunc->returnType->kind) {
+                printf("Error type 8 at Line %d: Type mismatched for return.\n",
+                       node->line);
+                error_count++;
+            }
+            freeType(retType);
+            if (node->num >= 3) traverse(node->child[2]); // SEMI
+            return;
+        }
+        // 其他 Stmt 类型：递归处理子节点
+        for (int i = 0; i < node->num; i++)
+            traverse(node->child[i]);
         return;
     }
 
@@ -223,6 +244,8 @@ static void processExtDef(Node* node) {
         }
 
         // 进入函数作用域（参数 + 函数体）
+        Symbol* prevFunc = currentFunc;
+        currentFunc = funcSym;
         enterScope();
 
         // 处理参数列表 FunDec → ID LP VarList RP  或  ID LP RP
@@ -254,6 +277,7 @@ static void processExtDef(Node* node) {
         }
 
         exitScope();
+        currentFunc = prevFunc;
 
     } else if (strcmp(kind->name, "ExtDecList") == 0) {
         // ===== 全局变量: Specifier ExtDecList SEMI =====
