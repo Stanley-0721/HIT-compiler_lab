@@ -345,12 +345,23 @@ static Type* getTypeFromSpecifier(Node* spec) {
             return createType(TYPE_FLOAT);
     }
     if (strcmp(child->name, "StructSpecifier") == 0) {
+        // StructSpecifier → STRUCT OptTag LC DefList RC  (内联定义，先处理)
+        if (child->num == 5) {
+            processStructDef(child);
+            if (child->child[1])
+                return createStructType(child->child[1]->child[0]->val.str);
+        }
         // StructSpecifier → STRUCT Tag  (引用)
-        if (child->num == 2)
-            return createStructType(child->child[1]->child[0]->val.str);
-        // StructSpecifier → STRUCT OptTag LC DefList RC  (定义)
-        if (child->num == 5 && child->child[1])
-            return createStructType(child->child[1]->child[0]->val.str);
+        if (child->num == 2) {
+            char* tagName = child->child[1]->child[0]->val.str;
+            Symbol* sym = lookupSymbol(tagName);
+            if (!sym || sym->kind != SYM_STRUCT) {
+                printf("Error type 17 at Line %d: Undefined structure \"%s\".\n",
+                       child->line, tagName);
+                error_count++;
+            }
+            return createStructType(tagName);
+        }
     }
     return createType(TYPE_INT);
 }
