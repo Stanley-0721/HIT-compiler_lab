@@ -2,7 +2,7 @@ all:
 	rm -f main lex.yy.c syntax.tab.c syntax.tab.h parser
 	bison -d syntax.y
 	flex lexical.l
-	gcc syntax.tab.c lex.yy.c main.c symbol_table.c -o parser -lfl
+	gcc syntax.tab.c lex.yy.c main.c symbol_table.c semantic.c -o parser -lfl
 clean:
 	rm -f main lex.yy.c syntax.tab.c syntax.tab.h parser
 test:

@@ -3,6 +3,7 @@
 #include <string.h>
 #include "main.h"
 #include "syntax.tab.h"
+#include "semantic.h"
 extern FILE* yyin;
 int has_lexical_error = 0; // 标记是否有词法错误
 int has_syntax_error = 0;  // 标记是否有语法错误
@@ -100,6 +101,8 @@ int main(int argc,char** argv){
   if (has_lexical_error || has_syntax_error) {
     return 0;
   }
+
+  semanticAnalysis(root);
 
   if (root != NULL) {
       printTree(root, 0);
