@@ -89,12 +89,10 @@ void exitScope(void) {
         Symbol* sym = old->symbols[i];
         if (sym->type) freeType(sym->type);
         if (sym->returnType) freeType(sym->returnType);
-        if (sym->params) {
-            for (int j = 0; j < sym->paramCount; j++) {
-                if (sym->params[j]->type) freeType(sym->params[j]->type);
-                free(sym->params[j]);
-            }
-            free(sym->params);
+        if (sym->paramTypes) {
+            for (int j = 0; j < sym->paramCount; j++)
+                freeType(sym->paramTypes[j]);
+            free(sym->paramTypes);
         }
         if (sym->fields) {
             for (int j = 0; j < sym->fieldCount; j++) {
@@ -111,14 +109,8 @@ void exitScope(void) {
 
 Symbol* insertSymbol(const char* name, Type* type, SymKind kind, int line) {
     for (int i = 0; i < currentScope->count; i++) {
-        if (strcmp(currentScope->symbols[i]->name, name) == 0) {
-            printf("Error type 3 at Line %d: Redefined %s \"%s\"\n",
-                   line,
-                   kind == SYM_FUNC ? "function" :
-                   kind == SYM_STRUCT ? "struct" : "variable",
-                   name);
+        if (strcmp(currentScope->symbols[i]->name, name) == 0)
             return NULL;
-        }
     }
 
     Symbol* sym = (Symbol*)malloc(sizeof(Symbol));
@@ -128,7 +120,7 @@ Symbol* insertSymbol(const char* name, Type* type, SymKind kind, int line) {
     sym->kind = kind;
     sym->line = line;
     sym->returnType = NULL;
-    sym->params = NULL;
+    sym->paramTypes = NULL;
     sym->paramCount = 0;
     sym->fields = NULL;
     sym->fieldCount = 0;
@@ -183,12 +175,10 @@ void freeSymbolTable(void) {
             Symbol* sym = old->symbols[i];
             if (sym->type) freeType(sym->type);
             if (sym->returnType) freeType(sym->returnType);
-            if (sym->params) {
-                for (int j = 0; j < sym->paramCount; j++) {
-                    if (sym->params[j]->type) freeType(sym->params[j]->type);
-                    free(sym->params[j]);
-                }
-                free(sym->params);
+            if (sym->paramTypes) {
+                for (int j = 0; j < sym->paramCount; j++)
+                    freeType(sym->paramTypes[j]);
+                free(sym->paramTypes);
             }
             if (sym->fields) {
                 for (int j = 0; j < sym->fieldCount; j++) {

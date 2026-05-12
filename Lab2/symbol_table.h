@@ -47,7 +47,7 @@ typedef struct Symbol_ {
 
     // 函数专用
     Type* returnType;
-    struct Symbol_** params;
+    Type** paramTypes;
     int paramCount;
 
     // 结构体专用：成员字段

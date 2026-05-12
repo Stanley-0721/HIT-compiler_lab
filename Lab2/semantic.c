@@ -148,8 +148,13 @@ static void processExtDef(Node* node) {
         // 函数名
         char* funcName = kind->child[0]->val.str;
         Symbol* funcSym = insertSymbol(funcName, NULL, SYM_FUNC, kind->line);
-        if (funcSym)
+        if (!funcSym) {
+            printf("Error type 4 at Line %d: Redefined function \"%s\".\n",
+                   kind->line, funcName);
+            error_count++;
+        } else {
             funcSym->returnType = returnType;
+        }
 
         // 进入函数作用域（参数 + 函数体）
         enterScope();
@@ -163,15 +168,12 @@ static void processExtDef(Node* node) {
                 Type* pType = getTypeFromSpecifier(paramDec->child[0]);
                 processVarDec(paramDec->child[1], pType);
 
-                // 收集参数到函数符号
+                // 收集参数类型到函数符号
                 if (funcSym) {
-                    char* pName = getBaseVarName(paramDec->child[1]);
-                    Symbol* pSym = lookupSymbolInScope(pName);
-                    if (pSym) {
-                        funcSym->params = (Symbol**)realloc(funcSym->params,
-                            (funcSym->paramCount + 1) * sizeof(Symbol*));
-                        funcSym->params[funcSym->paramCount++] = pSym;
-                    }
+                    Type* paramCopy = copyType(pType);
+                    funcSym->paramTypes = (Type**)realloc(funcSym->paramTypes,
+                        (funcSym->paramCount + 1) * sizeof(Type*));
+                    funcSym->paramTypes[funcSym->paramCount++] = paramCopy;
                 }
 
                 cur = (cur->num == 3) ? cur->child[2] : NULL;
@@ -251,7 +253,13 @@ static void processVarDec(Node* varDec, Type* type) {
         // 简单变量: ID
         char* name = varDec->child[0]->val.str;
         Type* ownType = copyType(type);
-        insertSymbol(name, ownType, SYM_VAR, varDec->line);
+        Symbol* sym = insertSymbol(name, ownType, SYM_VAR, varDec->line);
+        if (!sym) {
+            printf("Error type 3 at Line %d: Redefined variable \"%s\".\n",
+                   varDec->line, name);
+            error_count++;
+            freeType(ownType);
+        }
         return;
     }
 
