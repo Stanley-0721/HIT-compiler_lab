@@ -35,6 +35,18 @@ Type* createArrayType(Type* elemType, int size) {
     return t;
 }
 
+Type* copyType(Type* type) {
+    if (!type) return NULL;
+    Type* t = (Type*)malloc(sizeof(Type));
+    t->kind = type->kind;
+    strncpy(t->structName, type->structName, MAX_NAME - 1);
+    t->structName[MAX_NAME - 1] = '\0';
+    t->isArray = type->isArray;
+    t->elementType = copyType(type->elementType);
+    t->arraySize = type->arraySize;
+    return t;
+}
+
 void freeType(Type* type) {
     if (!type) return;
     if (type->isArray && type->elementType)

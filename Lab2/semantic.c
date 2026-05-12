@@ -85,6 +85,24 @@ static void checkExp(Node* exp) {
         return;
     }
 
+    // Exp → ID LP RP        —— 无参函数调用
+    // Exp → ID LP Args RP   —— 有参函数调用
+    if (exp->num >= 3 &&
+        strcmp(exp->child[0]->name, "ID") == 0 &&
+        strcmp(exp->child[1]->name, "LP") == 0) {
+        char* name = exp->child[0]->val.str;
+        Symbol* sym = lookupSymbol(name);
+        if (!sym) {
+            printf("Error type 2 at Line %d: Undefined function \"%s\".\n",
+                   exp->line, name);
+            error_count++;
+        }
+        // 递归检查实参中的变量引用
+        for (int i = 2; i < exp->num; i++)
+            traverse(exp->child[i]);
+        return;
+    }
+
     // 复合表达式：递归检查子表达式
     for (int i = 0; i < exp->num; i++)
         traverse(exp->child[i]);
@@ -232,14 +250,15 @@ static void processVarDec(Node* varDec, Type* type) {
     if (varDec->num == 1) {
         // 简单变量: ID
         char* name = varDec->child[0]->val.str;
-        insertSymbol(name, type, SYM_VAR, varDec->line);
+        Type* ownType = copyType(type);
+        insertSymbol(name, ownType, SYM_VAR, varDec->line);
         return;
     }
 
     if (varDec->num == 4) {
         // 数组: VarDec LB INT RB
         int size = varDec->child[2]->val.ival;
-        Type* arrType = createArrayType(type, size);
+        Type* arrType = createArrayType(copyType(type), size);
         processVarDec(varDec->child[0], arrType);
         return;
     }

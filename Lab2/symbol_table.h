@@ -26,6 +26,7 @@ typedef struct Type_ {
 Type* createType(TypeKind kind);
 Type* createStructType(const char* name);
 Type* createArrayType(Type* elemType, int size);
+Type* copyType(Type* type);
 void freeType(Type* type);
 
 /* ================================================================

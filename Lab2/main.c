@@ -104,6 +104,11 @@ int main(int argc,char** argv){
 
   semanticAnalysis(root);
 
+  if (hasSemanticError()) {
+    freeTree(root);
+    return 0;
+  }
+
   if (root != NULL) {
       printTree(root, 0);
       freeTree(root);
