@@ -16,6 +16,8 @@ static void processDecList(Node* decList, Type* baseType);
 static void processExtDecList(Node* extDecList, Type* baseType);
 static void processVarDec(Node* varDec, Type* type);
 static Type* checkExp(Node* exp);
+static void processStructDef(Node* structSpec);
+static void collectStructFields(Node* decList, Type* fieldType, Symbol* structSym);
 static char* getBaseVarName(Node* varDec);
 
 /* ================================================================
@@ -288,6 +290,22 @@ static Type* checkExp(Node* exp) {
             printf("Error type 13 at Line %d: Illegal use of \".\".\n",
                    exp->line);
             error_count++;
+            freeType(left);
+            return createType(TYPE_INT);
+        }
+        if (left) {
+            char* fieldName = exp->child[2]->val.str;
+            Symbol* field = lookupStructField(left->structName, fieldName);
+            if (!field) {
+                printf("Error type 14 at Line %d: Non-existent field \"%s\".\n",
+                       exp->line, fieldName);
+                error_count++;
+                freeType(left);
+                return NULL;
+            }
+            Type* fieldType = copyType(field->type);
+            freeType(left);
+            return fieldType;
         }
         freeType(left);
         return createType(TYPE_INT);
@@ -326,6 +344,14 @@ static Type* getTypeFromSpecifier(Node* spec) {
         if (strcmp(child->val.str, "float") == 0)
             return createType(TYPE_FLOAT);
     }
+    if (strcmp(child->name, "StructSpecifier") == 0) {
+        // StructSpecifier → STRUCT Tag  (引用)
+        if (child->num == 2)
+            return createStructType(child->child[1]->child[0]->val.str);
+        // StructSpecifier → STRUCT OptTag LC DefList RC  (定义)
+        if (child->num == 5 && child->child[1])
+            return createStructType(child->child[1]->child[0]->val.str);
+    }
     return createType(TYPE_INT);
 }
 
@@ -339,7 +365,10 @@ static void processExtDef(Node* node) {
     // child[2] = SEMI | CompSt (if present)
 
     if (node->num == 2) {
-        // Specifier SEMI (如 struct S;)
+        // Specifier SEMI (如 struct 定义)
+        Node* spec = node->child[0];
+        if (spec->num > 0 && strcmp(spec->child[0]->name, "StructSpecifier") == 0)
+            processStructDef(spec->child[0]);
         return;
     }
 
@@ -478,6 +507,59 @@ static void processVarDec(Node* varDec, Type* type) {
         processVarDec(varDec->child[0], arrType);
         return;
     }
+}
+
+/* ================================================================
+ *  结构体定义
+ * ================================================================ */
+
+static void processStructDef(Node* structSpec) {
+    if (!structSpec || structSpec->num != 5) return;
+    // StructSpecifier → STRUCT OptTag LC DefList RC
+    if (!structSpec->child[1]) return; // 匿名结构体
+
+    char* name = structSpec->child[1]->child[0]->val.str;
+    Symbol* structSym = insertSymbol(name, NULL, SYM_STRUCT, structSpec->line);
+    if (!structSym)
+        return;
+
+    // 遍历 DefList 收集字段
+    Node* defList = structSpec->child[3];
+    Node* cur = defList;
+    while (cur && cur->num > 0 && strcmp(cur->name, "DefList") == 0) {
+        Node* def = cur->child[0]; // Def → Specifier DecList SEMI
+        Type* fieldType = getTypeFromSpecifier(def->child[0]);
+        collectStructFields(def->child[1], fieldType, structSym);
+        cur = (cur->num >= 2 && cur->child[1]) ? cur->child[1] : NULL;
+    }
+}
+
+static void collectStructFields(Node* decList, Type* fieldType, Symbol* structSym) {
+    if (!decList || !structSym) return;
+    // DecList → Dec | Dec COMMA DecList
+    Node* dec = decList->child[0]; // Dec → VarDec | VarDec ASSIGNOP Exp
+    Node* varDec = dec->child[0];
+    char* fieldName = getBaseVarName(varDec);
+    if (!fieldName) return;
+
+    Symbol* field = (Symbol*)malloc(sizeof(Symbol));
+    strncpy(field->name, fieldName, MAX_NAME - 1);
+    field->name[MAX_NAME - 1] = '\0';
+    field->type = copyType(fieldType);
+    field->kind = SYM_VAR;
+    field->line = varDec->line;
+    field->returnType = NULL;
+    field->paramTypes = NULL;
+    field->paramCount = 0;
+    field->fields = NULL;
+    field->fieldCount = 0;
+
+    structSym->fields = (Symbol**)realloc(structSym->fields,
+        (structSym->fieldCount + 1) * sizeof(Symbol*));
+    structSym->fields[structSym->fieldCount++] = field;
+
+    if (decList->num == 3)
+        collectStructFields(decList->child[2], fieldType, structSym);
 }
 
 /* ================================================================
