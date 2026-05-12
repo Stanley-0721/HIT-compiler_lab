@@ -14,7 +14,7 @@ static void processDef(Node* node);
 static void processDecList(Node* decList, Type* baseType);
 static void processExtDecList(Node* extDecList, Type* baseType);
 static void processVarDec(Node* varDec, Type* type);
-static void checkExp(Node* exp);
+static Type* checkExp(Node* exp);
 static char* getBaseVarName(Node* varDec);
 
 /* ================================================================
@@ -59,7 +59,8 @@ static void traverse(Node* node) {
     }
 
     if (strcmp(node->name, "Exp") == 0) {
-        checkExp(node);
+        Type* t = checkExp(node);
+        freeType(t);
         return;
     }
 
@@ -72,8 +73,10 @@ static void traverse(Node* node) {
  *  表达式检查
  * ================================================================ */
 
-static void checkExp(Node* exp) {
-    // Exp → ID   —— 变量引用
+static Type* checkExp(Node* exp) {
+    if (!exp) return NULL;
+
+    // Exp → ID  —— 变量引用
     if (exp->num == 1 && strcmp(exp->child[0]->name, "ID") == 0) {
         char* name = exp->child[0]->val.str;
         Symbol* sym = lookupSymbol(name);
@@ -81,12 +84,20 @@ static void checkExp(Node* exp) {
             printf("Error type 1 at Line %d: Undefined variable \"%s\".\n",
                    exp->line, name);
             error_count++;
+            return createType(TYPE_INT);
         }
-        return;
+        return copyType(sym->type);
     }
 
-    // Exp → ID LP RP        —— 无参函数调用
-    // Exp → ID LP Args RP   —— 有参函数调用
+    // Exp → INT
+    if (exp->num == 1 && strcmp(exp->child[0]->name, "INT") == 0)
+        return createType(TYPE_INT);
+
+    // Exp → FLOAT
+    if (exp->num == 1 && strcmp(exp->child[0]->name, "FLOAT") == 0)
+        return createType(TYPE_FLOAT);
+
+    // Exp → ID LP RP       /  Exp → ID LP Args RP  —— 函数调用
     if (exp->num >= 3 &&
         strcmp(exp->child[0]->name, "ID") == 0 &&
         strcmp(exp->child[1]->name, "LP") == 0) {
@@ -96,16 +107,44 @@ static void checkExp(Node* exp) {
             printf("Error type 2 at Line %d: Undefined function \"%s\".\n",
                    exp->line, name);
             error_count++;
+            return createType(TYPE_INT);
         }
-        // 递归检查实参中的变量引用
         for (int i = 2; i < exp->num; i++)
             traverse(exp->child[i]);
-        return;
+        return copyType(sym->returnType);
     }
 
-    // 复合表达式：递归检查子表达式
-    for (int i = 0; i < exp->num; i++)
-        traverse(exp->child[i]);
+    // Exp → Exp ASSIGNOP Exp  —— 赋值
+    if (exp->num == 3 && strcmp(exp->child[1]->name, "ASSIGNOP") == 0) {
+        Type* left  = checkExp(exp->child[0]);
+        Type* right = checkExp(exp->child[2]);
+        if (left && right && left->kind != right->kind) {
+            printf("Error type 5 at Line %d: Type mismatched for assignment.\n",
+                   exp->line);
+            error_count++;
+        }
+        freeType(right);
+        return left;
+    }
+
+    // Exp → LP Exp RP
+    if (exp->num == 3 && strcmp(exp->child[0]->name, "LP") == 0)
+        return checkExp(exp->child[1]);
+
+    // Exp → MINUS Exp  /  Exp → NOT Exp  (unary)
+    if (exp->num == 2)
+        return checkExp(exp->child[1]);
+
+    // 其他：二元运算 / 数组下标 / 结构体访问 -> 返回左子表达式类型
+    Type* result = NULL;
+    for (int i = 0; i < exp->num; i++) {
+        Type* t = checkExp(exp->child[i]);
+        if (t) {
+            if (!result) result = t;
+            else freeType(t);
+        }
+    }
+    return result ? result : createType(TYPE_INT);
 }
 
 /* ================================================================
