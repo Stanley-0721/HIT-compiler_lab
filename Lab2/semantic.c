@@ -201,7 +201,9 @@ static Type* checkExp(Node* exp) {
     // Exp → Exp ASSIGNOP Exp  —— 赋值
     if (exp->num == 3 && strcmp(exp->child[1]->name, "ASSIGNOP") == 0) {
         Node* lhs = exp->child[0];
-        int isVar = (lhs->num == 1 && strcmp(lhs->child[0]->name, "ID") == 0);
+        int isVar = (lhs->num == 1 && strcmp(lhs->child[0]->name, "ID") == 0)
+                 || (lhs->num == 4 && strcmp(lhs->child[1]->name, "LB") == 0)
+                 || (lhs->num == 3 && strcmp(lhs->child[1]->name, "DOT") == 0);
         if (!isVar) {
             printf("Error type 6 at Line %d: The left-hand side of an assignment must be a variable.\n",
                    exp->line);
@@ -251,6 +253,24 @@ static Type* checkExp(Node* exp) {
             error_count++;
         }
         Type* idxType = checkExp(exp->child[2]);
+        if (idxType && idxType->kind != TYPE_INT) {
+            char idxStr[64] = "expression";
+            Node* idxNode = exp->child[2];
+            if (idxNode->num == 1) {
+                if (strcmp(idxNode->child[0]->name, "INT") == 0)
+                    snprintf(idxStr, sizeof(idxStr), "%d",
+                             idxNode->child[0]->val.ival);
+                else if (strcmp(idxNode->child[0]->name, "FLOAT") == 0)
+                    snprintf(idxStr, sizeof(idxStr), "%g",
+                             idxNode->child[0]->val.fval);
+                else if (strcmp(idxNode->child[0]->name, "ID") == 0)
+                    snprintf(idxStr, sizeof(idxStr), "%s",
+                             idxNode->child[0]->val.str);
+            }
+            printf("Error type 12 at Line %d: \"%s\" is not an integer.\n",
+                   exp->line, idxStr);
+            error_count++;
+        }
         freeType(idxType);
         if (arrType && arrType->isArray && arrType->elementType) {
             Type* elem = copyType(arrType->elementType);
@@ -258,6 +278,18 @@ static Type* checkExp(Node* exp) {
             return elem;
         }
         freeType(arrType);
+        return createType(TYPE_INT);
+    }
+
+    // Exp → Exp DOT ID  —— 结构体成员访问
+    if (exp->num == 3 && strcmp(exp->child[1]->name, "DOT") == 0) {
+        Type* left = checkExp(exp->child[0]);
+        if (left && left->kind != TYPE_STRUCT) {
+            printf("Error type 13 at Line %d: Illegal use of \".\".\n",
+                   exp->line);
+            error_count++;
+        }
+        freeType(left);
         return createType(TYPE_INT);
     }
 
