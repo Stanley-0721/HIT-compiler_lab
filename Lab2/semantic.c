@@ -134,6 +134,26 @@ static Type* checkExp(Node* exp) {
         return left;
     }
 
+    // Exp → Exp OP Exp  —— 二元运算
+    if (exp->num == 3 && (
+        strcmp(exp->child[1]->name, "PLUS")   == 0 ||
+        strcmp(exp->child[1]->name, "MINUS")  == 0 ||
+        strcmp(exp->child[1]->name, "STAR")   == 0 ||
+        strcmp(exp->child[1]->name, "DIV")    == 0 ||
+        strcmp(exp->child[1]->name, "AND")    == 0 ||
+        strcmp(exp->child[1]->name, "OR")     == 0 ||
+        strcmp(exp->child[1]->name, "RELOP")  == 0)) {
+        Type* left  = checkExp(exp->child[0]);
+        Type* right = checkExp(exp->child[2]);
+        if (left && right && left->kind != right->kind) {
+            printf("Error type 7 at Line %d: Type mismatched for operands.\n",
+                   exp->line);
+            error_count++;
+        }
+        freeType(right);
+        return left;
+    }
+
     // Exp → LP Exp RP
     if (exp->num == 3 && strcmp(exp->child[0]->name, "LP") == 0)
         return checkExp(exp->child[1]);
