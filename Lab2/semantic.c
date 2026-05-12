@@ -140,6 +140,12 @@ static Type* checkExp(Node* exp) {
             error_count++;
             return createType(TYPE_INT);
         }
+        if (sym->kind != SYM_FUNC) {
+            printf("Error type 11 at Line %d: \"%s\" is not a function.\n",
+                   exp->line, name);
+            error_count++;
+            return createType(TYPE_INT);
+        }
 
         // 收集实参类型
         int argCount = 0;
