@@ -24,9 +24,28 @@ static char* getBaseVarName(Node* varDec);
  *  对外接口
  * ================================================================ */
 
+static void addBuiltinFunctions(void) {
+    // read: int read() — no params, returns int
+    Symbol* readSym = insertSymbol("read", NULL, SYM_FUNC, 0);
+    if (readSym) {
+        readSym->returnType = createType(TYPE_INT);
+        readSym->paramCount = 0;
+        readSym->paramTypes = NULL;
+    }
+    // write: int write(int) — one int param, returns int
+    Symbol* writeSym = insertSymbol("write", NULL, SYM_FUNC, 0);
+    if (writeSym) {
+        writeSym->returnType = createType(TYPE_INT);
+        writeSym->paramCount = 1;
+        writeSym->paramTypes = (Type**)malloc(sizeof(Type*));
+        writeSym->paramTypes[0] = createType(TYPE_INT);
+    }
+}
+
 void semanticAnalysis(Node* root) {
     error_count = 0;
     initSymbolTable();
+    addBuiltinFunctions();
     traverse(root);
     freeSymbolTable();
 }

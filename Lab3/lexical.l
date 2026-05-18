@@ -55,7 +55,12 @@ WHILE while
 {SEMI}       { yylval.tree = createTree("SEMI", yylineno); return SEMI; }
 {COMMA}      { yylval.tree = createTree("COMMA", yylineno); return COMMA; }
 {ASSIGNOP}   { yylval.tree = createTree("ASSIGNOP", yylineno); return ASSIGNOP; }
-{RELOP}      { yylval.tree = createTree("RELOP", yylineno); return RELOP; }
+{RELOP}      {
+    yylval.tree = createTree("RELOP", yylineno);
+    strncpy(yylval.tree->val.str, yytext, MAX_NAME-1);
+    yylval.tree->val.str[MAX_NAME-1] = '\0';
+    return RELOP;
+}
 {PLUS}       { yylval.tree = createTree("PLUS", yylineno); return PLUS; }
 {MINUS}      { yylval.tree = createTree("MINUS", yylineno); return MINUS; }
 {STAR}       { yylval.tree = createTree("STAR", yylineno); return STAR; }

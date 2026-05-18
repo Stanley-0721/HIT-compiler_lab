@@ -4,9 +4,10 @@
 #include "main.h"
 #include "syntax.tab.h"
 #include "semantic.h"
+#include "irgen.h"
 extern FILE* yyin;
-int has_lexical_error = 0; // 标记是否有词法错误
-int has_syntax_error = 0;  // 标记是否有语法错误
+int has_lexical_error = 0;
+int has_syntax_error = 0;
 
 void yyerror(const char *msg) {
   fprintf(stderr, "Error type B at Line %d: syntax error.\n", yylineno);
@@ -87,15 +88,19 @@ void printTree(Node* root, int depth) {
   }
 }
 
-int main(int argc,char** argv){
-  if(argc>1){
-    if(!(yyin=fopen(argv[1],"r"))){
-      perror(argv[1]);
-      return 1;
-    }
+int main(int argc, char** argv) {
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s <input_file> <output_file>\n", argv[0]);
+    return 1;
+  }
+
+  if (!(yyin = fopen(argv[1], "r"))) {
+    perror(argv[1]);
+    return 1;
   }
 
   yyparse();
+  fclose(yyin);
 
   extern Node* root;
   if (has_lexical_error || has_syntax_error) {
@@ -109,9 +114,8 @@ int main(int argc,char** argv){
     return 0;
   }
 
-  if (root != NULL) {
-      printTree(root, 0);
-      freeTree(root);
-  }
+  generateIR(root, argv[2]);
+
+  freeTree(root);
   return 0;
 }
